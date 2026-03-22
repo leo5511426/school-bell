@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>老師兼撞鐘 - 靈活版</title>
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 2.5rem; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); text-align: center; width: 380px; border-top: 8px solid #007bff; }
+        #date { color: #7f8c8d; font-size: 1.1rem; margin-bottom: 5px; }
+        #clock { font-size: 4rem; font-weight: 700; color: #2c3e50; margin: 10px 0; font-family: 'Courier New', monospace; letter-spacing: 2px; }
+        .status-box { background: #fdfdfd; border: 1px solid #e0e0e0; border-radius: 12px; padding: 20px; margin: 25px 0; position: relative; }
+        .next-label { font-size: 0.95rem; color: #95a5a6; margin-bottom: 8px; }
+        #typeTag { display: inline-block; padding: 2px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: white; }
+        .next-time { font-size: 2rem; font-weight: bold; display: block; }
+        button { background: #34495e; color: white; border: none; padding: 12px; border-radius: 10px; cursor: pointer; font-size: 1rem; width: 100%; transition: all 0.2s; font-weight: bold; }
+        button:hover { background: #2c3e50; transform: translateY(-2px); }
+        .footer-hint { font-size: 0.75rem; color: #bdc3c7; margin-top: 20px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="date">載入中...</div>
+    <div id="clock">00:00:00</div>
+    
+    <div class="status-box">
+        <span id="typeTag" style="background: #7f8c8d;">尚未設定</span>
+        <div class="next-label">下次打鐘時間</div>
+        <span id="targetDisplay" class="next-time">-- : --</span>
+    </div>
+
+    <button onclick="manualSet()">手動設定下一次</button>
+    
+    <div class="footer-hint">
+        ※ 時間到達時將自動播放對應音效<br>
+        並詢問下一段時間與類型
+    </div>
+</div>
+
+<audio id="startAudio" src="start.mp3"></audio>
+<audio id="endAudio" src="end.mp3"></audio>
+
+<script>
+    let targetTime = ""; 
+    let bellType = ""; // "上課" 或 "下課"
+
+    function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        const currentHM = `${h}:${m}`;
+        
+        document.getElementById('date').innerText = now.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+        document.getElementById('clock').innerText = `${h}:${m}:${s}`;
+
+        // 到達設定時間且秒數為 0
+        if (currentHM === targetTime && s === "00") {
+            triggerBell();
+        }
+    }
+
+    function triggerBell() {
+        const audioId = (bellType === "上課") ? "startAudio" : "endAudio";
+        const audio = document.getElementById(audioId);
+        
+        audio.play().catch(err => console.log("播放失敗，請確保已與網頁互動過"));
+
+        // 稍微延遲彈出視窗，讓鈴聲先響起
+        setTimeout(() => {
+            alert(`🔔 時間到！現在是 ${bellType} 時間 (${targetTime})`);
+            manualSet(); // 自動詢問下一次
+        }, 800);
+    }
+
+    function refreshUI() {
+        const display = document.getElementById('targetDisplay');
+        const tag = document.getElementById('typeTag');
+        
+        display.innerText = targetTime || "-- : --";
+        tag.innerText = bellType || "尚未設定";
+        
+        if (bellType === "上課") {
+            tag.style.background = "#d32f2f"; // 紅色代表上課
+            display.style.color = "#d32f2f";
+        } else if (bellType === "下課") {
+            tag.style.background = "#2e7d32"; // 綠色代表下課
+            display.style.color = "#2e7d32";
+        } else {
+            tag.style.background = "#7f8c8d";
+            display.style.color = "#2c3e50";
+        }
+    }
+
+    function manualSet() {
+        let timeInput = prompt("請輸入打鐘時間 (格式 HH:mm)，例如 10:30", targetTime || "");
+        
+        // 驗證時間格式
+        if (timeInput && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeInput)) {
+            // 讓使用者選擇類型
+            let isStart = confirm(`設定時間為 ${timeInput}\n\n這是一次「上課鐘」嗎？\n(按「確定」為上課，按「取消」為下課)`);
+            
+            targetTime = timeInput;
+            bellType = isStart ? "上課" : "下課";
+            refreshUI();
+        } else if (timeInput !== null) {
+            alert("格式錯誤！請重新輸入。");
+            manualSet();
+        }
+    }
+
+    // 初始化與啟動
+    setInterval(updateClock, 1000);
+    window.onload = () => {
+        // 第一次啟動時，先提示使用者點擊網頁以獲得音訊權限
+        document.body.addEventListener('click', () => {
+            if (!targetTime) manualSet();
+        }, { once: true });
+        
+        setTimeout(() => {
+            if (!targetTime) alert("請點擊頁面任何地方開始設定鐘聲。");
+        }, 500);
+    };
+</script>
+
+</body>
+</html>
