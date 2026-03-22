@@ -2,36 +2,141 @@
 <html lang="zh-Hant-TW">
 <head>
     <meta charset="UTF-8">
-    <title>自動鐘聲系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校園自動鐘聲系統</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: #eee; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        /* 啟動遮罩：強迫使用者點擊以獲得音訊權限 */
-        #setupOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; }
-        .card { background: #2c3e50; padding: 40px; border-radius: 20px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.5); width: 350px; }
-        #clock { font-size: 4rem; font-family: 'Courier New', monospace; color: #f1c40f; margin: 20px 0; }
-        .info { font-size: 1.2rem; color: #bdc3c7; margin-bottom: 20px; }
-        .tag { display: inline-block; padding: 5px 15px; border-radius: 5px; font-weight: bold; margin-bottom: 10px; }
-        button { background: #3498db; color: white; border: none; padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; width: 100%; transition: 0.3s; }
-        button:hover { background: #2980b9; }
-        #startBtn { background: #27ae60; font-size: 1.5rem; }
+        :root {
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e94560;
+            --accent: #0f3460;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-color);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* 啟動遮罩：解決瀏覽器音訊自動播放限制 */
+        #setupOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            width: 350px;
+            border: 1px solid var(--accent);
+        }
+
+        #clock {
+            font-size: 3.5rem;
+            font-weight: bold;
+            color: #00d2ff;
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .next-label { color: #95a5a6; font-size: 0.9rem; margin-bottom: 5px; }
+        
+        #typeTag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        #targetDisplay {
+            font-size: 2.2rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 1.1rem;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background: #ff5e78;
+            transform: translateY(-2px);
+        }
+
+        #startBtn {
+            background: #00d2ff;
+            font-size: 1.5rem;
+            width: auto;
+            padding: 20px 50px;
+        }
+
+        .footer-note {
+            font-size: 0.8rem;
+            color: #555;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
 
 <div id="setupOverlay">
-    <h1>🔔 鐘聲系統</h1>
-    <p>請點擊下方按鈕以啟動音訊權限</p>
-    <button id="startBtn" onclick="unlockAudio()">點擊啟動系統</button>
+    <h1 style="color: #00d2ff;">🔔 鐘聲系統</h1>
+    <p>為了確保聲音能準確播放，請點擊下方按鈕啟動</p>
+    <button id="startBtn" onclick="initSystem()">啟動系統</button>
 </div>
 
 <div class="card">
-    <div id="date">2026/03/22</div>
+    <div id="date" style="color: #95a5a6;">2026/03/22</div>
     <div id="clock">00:00:00</div>
-    <div class="info">
-        <div id="typeTag" class="tag" style="background: #7f8c8d;">尚未設定</div><br>
-        下次時間：<span id="targetDisplay" style="font-weight: bold; font-size: 1.5rem;">--:--</span>
+    
+    <div class="status-area">
+        <div class="next-label">下次鳴響</div>
+        <div id="typeTag" style="background: #555;">尚未設定</div>
+        <span id="targetDisplay">-- : --</span>
     </div>
-    <button onclick="manualSet()">更改下一次設定</button>
+
+    <button onclick="setNextBell()">設定下次鐘聲</button>
+    
+    <div class="footer-note">
+        請保持此分頁開啟，勿縮小視窗
+    </div>
 </div>
 
 <audio id="startAudio" src="start.mp3" preload="auto"></audio>
@@ -39,58 +144,92 @@
 
 <script>
     let targetTime = "";
-    let bellType = "";
+    let bellType = ""; // "上課" 或 "下課"
 
-    function unlockAudio() {
-        // 解鎖音訊
-        document.getElementById('startAudio').play().then(() => {
-            document.getElementById('startAudio').pause();
-        }).catch(() => {});
+    // 初始化系統：解鎖瀏覽器音訊權限
+    function initSystem() {
+        const a1 = document.getElementById('startAudio');
+        const a2 = document.getElementById('endAudio');
         
-        document.getElementById('endAudio').play().then(() => {
-            document.getElementById('endAudio').pause();
-        }).catch(() => {});
+        // 播放靜音/極短片段來獲取權限
+        const unlock = (a) => {
+            a.play().then(() => {
+                a.pause();
+                a.currentTime = 0;
+            }).catch(e => console.error("Audio unlock failed", e));
+        };
+
+        unlock(a1);
+        unlock(a2);
 
         document.getElementById('setupOverlay').style.display = 'none';
-        manualSet();
+        setNextBell();
     }
 
-    function update() {
+    function updateClock() {
         const now = new Date();
         const h = String(now.getHours()).padStart(2, '0');
         const m = String(now.getMinutes()).padStart(2, '0');
         const s = String(now.getSeconds()).padStart(2, '0');
         const currentHM = `${h}:${m}`;
         
-        document.getElementById('date').innerText = now.toLocaleDateString();
+        document.getElementById('date').innerText = now.toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
         document.getElementById('clock').innerText = `${h}:${m}:${s}`;
 
+        // 判斷時間到 (秒數必須為 00 避免重複觸發)
         if (currentHM === targetTime && s === "00") {
-            const audio = document.getElementById(bellType === "上課" ? "startAudio" : "endAudio");
-            audio.play();
-            
-            setTimeout(() => {
-                alert(`【${bellType}】時間到！`);
-                manualSet();
-            }, 500);
+            playBell();
         }
     }
 
-    function manualSet() {
-        let time = prompt("下次打鐘時間? (HH:mm)", targetTime || "");
-        if (time && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(time)) {
-            let isClass = confirm("確定：上課鐘 🔴\n取消：下課鐘 🟢");
-            targetTime = time;
-            bellType = isClass ? "上課" : "下課";
+    function playBell() {
+        const audioId = (bellType === "上課") ? "startAudio" : "endAudio";
+        const audio = document.getElementById(audioId);
+        
+        audio.play();
+
+        // 彈出提醒並自動進入下一次設定
+        setTimeout(() => {
+            alert(`🔔 ${bellType} 時間到！(${targetTime})`);
+            setNextBell();
+        }, 1000);
+    }
+
+    function setNextBell() {
+        let timeInput = prompt("請輸入下次打鐘時間 (24小時制 HH:mm)\n例如 08:10 或 16:30", targetTime || "");
+        
+        if (timeInput && /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/.test(timeInput)) {
+            // 使用 confirm 讓使用者選擇類型
+            let isStart = confirm(`設定時間：${timeInput}\n\n這是一次「上課鐘」嗎？\n(按【確定】為上課鐘，按【取消】為下課鐘)`);
             
-            const tag = document.getElementById('typeTag');
-            tag.innerText = bellType;
-            tag.style.background = isClass ? "#e74c3c" : "#27ae60";
-            document.getElementById('targetDisplay').innerText = targetTime;
+            targetTime = timeInput;
+            bellType = isStart ? "上課" : "下課";
+            updateUI();
+        } else if (timeInput !== null) {
+            alert("格式錯誤，請輸入如 09:30 的格式。");
+            setNextBell();
         }
     }
 
-    setInterval(update, 1000);
+    function updateUI() {
+        const display = document.getElementById('targetDisplay');
+        const tag = document.getElementById('typeTag');
+        
+        display.innerText = targetTime;
+        tag.innerText = bellType;
+        
+        if (bellType === "上課") {
+            tag.style.background = "#e94560"; // 紅色
+            display.style.color = "#e94560";
+        } else {
+            tag.style.background = "#27ae60"; // 綠色
+            display.style.color = "#27ae60";
+        }
+    }
+
+    // 每秒更新一次時鐘
+    setInterval(updateClock, 1000);
 </script>
+
 </body>
 </html>
